@@ -1,3 +1,4 @@
+using IoTTelemetryLab.Evaluation;
 using IoTTelemetryLab.Models;
 
 namespace IoTTelemetryLab.Processing;
@@ -7,25 +8,30 @@ namespace IoTTelemetryLab.Processing;
 /// </summary>
 public static class TelemetryAnalytics
 {
-    /// <summary>
-    /// Finds the timestamp of the first Critical reading.
-    /// Uses the LINQ methods Where, Select, and FirstOrDefault.
-    /// </summary>
-    /// <param name="readings">Cleaned readings.</param>
-    /// <param name="type">Sensor type.</param>
-    /// <returns>
-    /// The timestamp of the first Critical reading, or null
-    /// if no such reading exists.
-    /// </returns>
-    public static DateTime? FirstCriticalTimestamp(
+    public static int CountByStatus(
         IEnumerable<TelemetryReading> readings,
-        SensorType type)
+        SensorType type,
+        SafetyStatus target,
+        SensorEvaluatorRegistry registry)
     {
-        return readings
-            .Where(r =>
-                StatusEvaluator.Evaluate(type, r.Value)
-                == SafetyStatus.Critical)
-            .Select(r => (DateTime?)r.Timestamp)
-            .FirstOrDefault();
+        return readings.Count(
+            r => registry.Evaluate(type, r.Value) == target);
+    }
+
+    public static IEnumerable<double> MovingAverage(
+        IEnumerable<TelemetryReading> readings,
+        int windowSize)
+    {
+        var values = readings
+            .Select(r => r.Value)
+            .ToList();
+
+        for (int i = 0; i <= values.Count - windowSize; i++)
+        {
+            yield return values
+                .Skip(i)
+                .Take(windowSize)
+                .Average();
+        }
     }
 }
